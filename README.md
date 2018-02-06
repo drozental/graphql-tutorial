@@ -1,5 +1,9 @@
-"The strongly typed GraphQL data querying language is a revolutionary new way to interact with your server. Similar to how JSON very quickly overtook XML, GraphQL will likely take over REST. Why? Because GraphQL allows us to express our data in the exact same way we think about it."
+"The strongly typed GraphQL data querying language is a revolutionary new way to interact with your server. Similar to how JSON very quickly overtook XML, GraphQL will likely take over REST. Why? Because GraphQL allows us to express our data in the exact same way we think about it." - https://github.com/postgraphql/postgraphql
 # Let's build our first GraphQL
+1. Create a rails app
+```ruby
+rails new APP_NAME
+```
 1. Define our tables
 ```
 rails generate model Pet name:text kind:text owner_id:integer
@@ -28,7 +32,7 @@ class Owner < ApplicationRecord
 end
 
 ```
-4. Add graphql and faker gem and install it. Generate graphql structure
+4. Add graphql and faker gem and install it. Generate graphql structure and add some data
 ```ruby
 # Gemfile
 
@@ -169,8 +173,8 @@ mutation {
 }
 ```
 Can we now build update and delete mutations ourselves?
-8. What about performance?  Does listing pets and related result in N+1 number of queries?
-How many queries does execute now?
+8. What about performance?  Does listing pets and related objects result in N+1 number of queries?
+How many queries run now?
 ```ruby
 {
   pets {
