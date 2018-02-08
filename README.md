@@ -77,7 +77,7 @@ In the console, let's populate our models with some data
   end
 ```
 
-##Define our simple GraphQL schema, types, queries and mutations
+## Define our simple GraphQL schema, types, queries and mutations
 1. It is now time to add graphql to our app. In the `Gemfile` add graphql dependency
 ```ruby
 # Gemfile
@@ -139,7 +139,7 @@ Types::ActivityType = GraphQL::ObjectType.define do
 end
 
 ```
-6. Let's start graphiQL!! Wait, what is it?
+3. Let's start graphiQL!! Wait, what is it?
 It is a graphic tool to query your new endpoint/s and it comes with graphql ruby gem out of the box when using with ...
 yes, full rails. It is not available with rails api.  To start it, just start your rails app!
 ```ruby
@@ -177,7 +177,7 @@ Experiment with the query or run the below query:
 }
 
 ```
-7. That's great!!! But what about the rest of the CRUD ops? In graphQL, we use MUTATIONS: 
+4. That's great!!! But what about the rest of the CRUD ops? In graphQL, we use MUTATIONS: 
 queries that have consequences.  Let's create a `create pet` mutation.
 ```ruby
 # ./graphql/types/mutation_type.rb
