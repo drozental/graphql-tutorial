@@ -1,53 +1,71 @@
-"The strongly typed GraphQL data querying language is a revolutionary new way to interact with your server. Similar to how JSON very quickly overtook XML, GraphQL will likely take over REST. Why? Because GraphQL allows us to express our data in the exact same way we think about it." - https://github.com/postgraphql/postgraphql
-# Let's build our first GraphQL
-1. Create a rails app
+# Let's build our first GraphQL API in RoR
+GraphQL is taking the world by storm... well, maybe.  The adoption of GraphQL seems
+ to be increasing and that means we should be aware of it and understand it. 
+It naturally seems to be a good fit for RoR APIs,
+ as these two technologies would be used in similar cases: 
+ POC's and rapid development situations
+ 
+ In this article, we'll accomplish the following things:
+ * Create a Rails App
+ * Define our simple DB schema
+ * Define our simple GraphQL schema, types, queries and mutations
+ * Optimise our API's to avoid N+1 queries
+ * Add pagination to the API's
+
+## Creating our Rails App and defining DB schema
+1. Create a rails app with the below command.  Use your own name instead of APP_NAME
 ```ruby
 rails new APP_NAME
 ```
-1. Define our tables
+2. Lets define our tables with `rails g model` commands
 ```
 rails generate model Pet name:text kind:text owner_id:integer
 rails generate model Owner first_name:text last_name:text bio:text
-rails generate model Activity decription:text pet_id:integer owner_id:integer
+rails generate model Activity description:text pet_id:integer owner_id:integer
 ```
-2. Migrate them
+3. It is time to run the generated migrations
 ```
 rails db:create && rails db:migrate
 ```
-3. Add relationships to models
+4. The tables and models have been generated.  We will now add relationships to our models
 ``` ruby
+# activity.rb
 class Activity < ApplicationRecord
   belongs_to :owner
   belongs_to :pet
 end
 
+# pet.rb
 class Pet < ApplicationRecord
   belongs_to :owner, required: false
   has_many :activities
 end
 
+# owner.rb
 class Owner < ApplicationRecord
   has_many :activities
   has_many :pets
 end
-
 ```
-4. Add graphql and faker gem and install it. Generate graphql structure and add some data
-```ruby
-# Gemfile
+5. Now that our db schema and models are defined, let's add some data to the app
 
-gem 'graphql'
-gem 'graphiql-rails', group: :development
+Add faker gem to the Gemfile:
+```ruby
 gem 'faker', group: :development
-
-$ bundle install
-$ rails generate graphql:install
-$ rails c
+```
+And then install it by running 
+```bash
+bundle install
 ```
 
+Once it is installed, start your rails console
+```bash
+rails c
+```
+In the console, let's populate our models with some data
 ```ruby
-  10.times { Pet.create(name: Faker::Dog.name, kind: Faker::Dog.breed) }
-  10.times { Owner.create(first_name: Faker::Name.first_name, last_name: Faker::Name.last_name, bio: Faker::Lorem.paragraph) }
+  15.times { Pet.create(name: Faker::Dog.name, kind: Faker::Dog.breed) }
+  15.times { Owner.create(first_name: Faker::Name.first_name, last_name: Faker::Name.last_name, bio: Faker::Lorem.paragraph) }
   
   owners = Owner.all
   
@@ -55,11 +73,48 @@ $ rails c
     owner = owners.sample
     pet.update(owner: owner)
   
-    5.times { Activity.create(decription: Faker::Seinfeld.quote, owner: owner, pet: pet) }
+    5.times { Activity.create(description: Faker::Seinfeld.quote, owner: owner, pet: pet) }
   end
 ```
-5. Let's define our types!
+
+##Define our simple GraphQL schema, types, queries and mutations
+1. It is now time to add graphql to our app. In the `Gemfile` add graphql dependency
 ```ruby
+# Gemfile
+
+gem 'graphql'
+```
+Once the dependency has been added to the Gemfile, let's install the gem and initialize it in our project 
+```bash
+$ bundle install
+$ rails generate graphql:install
+```
+This will create the "conventional" folder structure and add a default type and schema that we'll need to define ourselves
+
+2. Now it is time to define our graphQL types.  There is a types folder under graphql, that holds our types.  Let's add our 3 types
+```ruby
+# in ./graphql/types/pet_type.rb file
+Types::PetType = GraphQL::ObjectType.define do
+  name 'PetType'
+  description 'Represents a pet'
+
+  field :id, !types.ID, 'The ID of the pet'
+  field :name, types.String, 'The name of the pet'
+  field :kind, types.String, 'A type of animal'
+  # notice that we could define a custom field and provide a block that will 
+  # define how to resolve/build this field
+  field :capKind, types.String, 'An all caps version of the kind' do
+    resolve ->(obj, args, ctx) {
+      obj.kind.upcase
+    }
+  end
+  
+  # notice that we could map active record relations 
+  field :owner, Types::OwnerType, 'The owner of the pet'
+  field :activities, types[Types::ActivityType]
+end
+
+# in ./graphql/types/owner_type.rb
 Types::OwnerType = GraphQL::ObjectType.define do
   name 'OwnerType'
   description 'Represents a owner model'
@@ -72,39 +127,21 @@ Types::OwnerType = GraphQL::ObjectType.define do
   field :pets, types[Types::PetType]
 end
 
+#in ./graphql/types/activity_type.rb
 Types::ActivityType = GraphQL::ObjectType.define do
   name 'ActivityType'
   description 'Represents a activity for owner and a pet'
 
   field :id, types.ID, 'The ID of the activity'
-  field :decription, types.String, 'The name for the activity'
+  field :description, types.String, 'The name for the activity'
   field :owner, Types::OwnerType, 'The owner who participated in the activity'
   field :pet, Types::PetType, 'The pet that the activity was performed for'
 end
 
-Types::PetType = GraphQL::ObjectType.define do
-  name 'PetType'
-  description 'Represents a pet'
-
-  field :id, !types.ID, 'The ID of the pet'
-  field :name, types.String, 'The name of the pet'
-  field :kind, types.String, 'A type of animal'
-  # notcie that we could define a custom field and provide a block that will 
-  # need to define on how to resolve/build this field
-  field :capKind, types.String, 'An all caps version of the kind' do
-    resolve ->(obj, args, ctx) {
-      obj.kind.upcase
-    }
-  end
-  
-  # notice that we could map active record relations 
-  field :owner, Types::OwnerType, 'The owner of the pet'
-  field :activities, types[Types::ActivityType]
-end
 ```
 6. Let's start graphiQL!! Wait, what is it?
-It is a tool to query your new endpoint/s and it comes with graphql out of the box when doing ...
-yes :( full rails. It is not available with rails api.
+It is a graphic tool to query your new endpoint/s and it comes with graphql ruby gem out of the box when using with ...
+yes, full rails. It is not available with rails api.  To start it, just start your rails app!
 ```ruby
 rails serve
 ```
@@ -134,15 +171,16 @@ Experiment with the query or run the below query:
       }
     }
     activities {
-      decription
+      description
     }
   }
 }
 
 ```
-7. That's great!!! But what about the rest of the CRUD ops? MUTATIONS: 
-queries that have consequences
+7. That's great!!! But what about the rest of the CRUD ops? In graphQL, we use MUTATIONS: 
+queries that have consequences.  Let's create a `create pet` mutation.
 ```ruby
+# ./graphql/types/mutation_type.rb
 Types::MutationType = GraphQL::ObjectType.define do
   name "Mutation"
 
@@ -172,9 +210,11 @@ mutation {
   }
 }
 ```
-Can we now build update and delete mutations ourselves?
-8. What about performance?  Does listing pets and related objects result in N+1 number of queries?
-How many queries run now?
+Try adding update and delete mutations on your own?
+
+## Optimise our API's to avoid N+1 queries
+How does graphql api perform at the moment?  Does listing pets and related objects result in N+1 number of queries?
+Look in the terminal where you've started rails to see what and how many queries are run for the below query?
 ```ruby
 {
   pets {
@@ -190,24 +230,27 @@ How many queries run now?
       }
     }
     activities {
-      decription
+      description
     }
   }
 }
 ```
-* graphql-batch gem
+Yes, the results are not so great.  How could we deal with this?  There are couple solutions and today will look at the `garphql-batch`
+Couple of more options to consider: 
 * batch-loader gem 
-* Using .includes on your ActiveRecord database calls to preload all associations (naive approach).
-Let's try graphql-batch gem.
+* Using .includes in ActiveRecord
+
+1. graphql-batch gem
+
 Add it to our Gemfile and run bundle install
 ```ruby
 gem 'graphql-batch'
 ```
-9. We will now create two custom loaders: let's take a look
+2. We will now create two custom loaders: let's take a look
  ```ruby
-# create this class in graphql folder
-# this will take foreign key from each one of our records
-# and retrieve it from the provided model
+# in ./graphql/record_loader.rb
+# this class will take foreign keys for all of our records
+# and retrieve it from the provided model in one call to the db
 class RecordLoader < GraphQL::Batch::Loader
   def initialize(model)
     @model = model
@@ -219,34 +262,43 @@ class RecordLoader < GraphQL::Batch::Loader
   end
 end
 
+# in ./graphql/one_to_many_loader
 # this will take the related model and the foreign key to the current
 # object and will batch all of the selects for us
 # could this be written even simpler?
-class ForeignKeyLoader < GraphQL::Batch::Loader
+class OneToManyLoader < GraphQL::Batch::Loader
   def initialize(model, foreign_key)
     @model = model
     @foreign_key = foreign_key
   end
 
-  def perform(foreign_value_sets)
-    foreign_values = foreign_value_sets.flatten.uniq
-    records = @model.where(@foreign_key => foreign_values).to_a
+  def perform(ids)
+    puts "pre ids: #{ids}"
+    ids = ids.flatten.uniq
+    puts "post ids: #{ids}"
+    all_records = @model.where(@foreign_key => ids).to_a
 
-    foreign_value_sets.each do |foreign_value_set|
-      matching_records = records.select { |r| foreign_value_set.include?(r.send(@foreign_key)) }
-      fulfill(foreign_value_set, matching_records)
+    # this is for a one to many relationship batch processing
+    # we want to fulfill every foreign key with an array of matched records
+    # notice that when we fulfill, we need to fulfill based on the original set
+    # of ids sent to us, which was an array of array id: [ [id1], [id2], ... ]
+    # hence the fulfill being called with "[id]" as the key
+    ids.each do |id|
+      matches = all_records.select{ |r| id == r.send(@foreign_key) }
+      fulfill([id], matches)
     end
   end
 end
 ```
-10. Update our schema to use graphql-batch
+3. Now we need to update our schema to use graphql-batch
 ```ruby
-# add to our schema definition
+# ./graphql/APP_NAME_schema.rb
 use GraphQL::Batch
 ```
-11. Let's now update our type definitions to resolve model relationships
+4. Let's now update our type definitions to resolve model relationships
 with the new resolve definitions
 ```ruby
+# ./graphql/pet_type.rb
 # in Pet type replace the relationships with the below
 field :owner, -> { Types::OwnerType } do
   resolve -> (obj, args, ctx) {
@@ -255,12 +307,18 @@ field :owner, -> { Types::OwnerType } do
 end
 field :activities, -> { types[Types::ActivityType] }  do
   resolve -> (obj, args, ctx) {
-    ForeignKeyLoader.for(Activity, :pet_id).load([obj.id])
+    OneToManyLoader.for(Activity, :pet_id).load([obj.id])
+  }
+end
+
+# ./graphql/owner_type.rb
+field :pets, -> { types[Types::PetType] }  do
+  resolve -> (obj, args, ctx) {
+    OneToManyLoader.for(Pet, :owner_id).load([obj.id])
   }
 end
 ```
-Can you now update owner type and pet relationship?
-How many queries should this run now?  
+5. Let's check how many queries will run with our new batc loaders?  
 ```ruby
 {
   pets {
@@ -276,39 +334,130 @@ How many queries should this run now?
       }
     }
     activities {
-      decription
+      description
     }
   }
 }
 ```
-12. What about pagination?  As data sets grow, will not having pagination have a negative impact on performance?
-13. What about these? Not ruby, but great for rapid development? Pros/Cons?
+We are not down to four database queries, which is a great improvement. 
+
+## Add pagination to the API's
+1. What about pagination?  As data sets grow, will not having pagination have a negative impact on performance?
+
+Here is the spec: https://facebook.github.io/relay/graphql/connections.htm
+
+The spec calls for last, first and after.  When providing `last` and `first`, that is the number of records to take from either the begining or the end of the result set.  `After` specifies the offset.
+
+The default schema for pagination looks something like below.  `pageInfo` provides some info about navigation.
+`edges` provides the data in the `node` elements.  That is where we put our usual query. 
+```ruby
+  pageInfo {
+    startCursor
+    endCursor
+    hasNextPage
+    hasPreviousPage
+  }
+  edges {
+    cursor
+    node {
+      
+    }
+  }
+```
+2. We could add pagination two our query and we could also add pagination to the related entities in our query. 
+We are going to accomplish all of that by using connections.  Connections comes with pagination out of the box.  Let's give that a try.
+```ruby
+# ./graphql/types/query_type.rb
+# we update from field to connection and define new return type of
+# Types::PetType.connection_type
+connection :pets, Types::PetType.connection_type do
+  resolve -> (obj, args, ctx) {
+    Pet.all
+  }
+end
+```
+That's all!  Let's play around with it now:
+```ruby
+  pets(last: 4) {
+    pageInfo {
+      startCursor
+      endCursor
+      hasNextPage
+      hasPreviousPage
+    }
+    edges {
+      cursor
+      node {
+        id
+        name
+        owner {
+          lastName
+          firstName
+          bio
+          pets {
+            name
+            kind
+          }
+        }
+        activities {
+          id
+          decription 
+        }
+      }
+    }
+  }
+```
+
+What about paginating one to many relationships like our `activities`?  Wouldn't it be nice to only show the first 2 and then show more if user requests it?
+
+We could do that as well.  Add a connection to our pet_type.rb:
+```ruby
+connection :activities, Types::ActivityType.connection_type do
+  resolve -> (obj, args, ctx) {
+    OneToManyLoader.for(Activity, :pet_id).load([obj.id])
+  }
+end
+```
+Now we need to change our query, because `activies` returns a paginated object and not a plain `Types::ActivityType`
+```ruby
+{
+pets(last: 4) {
+    pageInfo {
+      startCursor
+      endCursor
+      hasNextPage
+      hasPreviousPage
+    }
+    edges {
+      cursor
+      node {
+        id
+        name
+        owner {
+          lastName
+          firstName
+          bio
+          pets {
+            name
+            kind
+          }
+        }
+        activities(first: 2) {
+          edges {
+            node {
+              id
+              decription 
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## Further considerations
+What about these? Not ruby, but great for rapid development? Pros/Cons?
   * http://www.graph.cool/
   * https://www.prismagraphql.com/
   * https://github.com/postgraphql/postgraphql
-
- 
-# README
-
-This README would normally document whatever steps are necessary to get the
-application up and running.
-
-Things you may want to cover:
-
-* Ruby version
-
-* System dependencies
-
-* Configuration
-
-* Database creation
-
-* Database initialization
-
-* How to run the test suite
-
-* Services (job queues, cache servers, search engines, etc.)
-
-* Deployment instructions
-
-* ...
