@@ -137,9 +137,30 @@ Types::ActivityType = GraphQL::ObjectType.define do
   field :owner, Types::OwnerType, 'The owner who participated in the activity'
   field :pet, Types::PetType, 'The pet that the activity was performed for'
 end
+```
+3. Let's deinfe couple of queries
+```ruby
+# ./graphql/type/query_type.rb
+field :pet, Types::PetType do
+  description 'Retrieve a pet post by id'
+
+  argument :id, !types.ID, 'The ID of the pet to retrieve'
+
+  resolve ->(obj, args, ctx) {
+    Pet.find(args[:id])
+  }
+end
+
+field :pets, types[Types::PetType] do
+  description 'Retrieve a list of all pets'
+
+  resolve ->(obj, args, ctx) {
+    Pet.all
+  }
+end
 
 ```
-3. Let's start graphiQL!! Wait, what is it?
+4. Let's start graphiQL!! Wait, what is it?
 It is a graphic tool to query your new endpoint/s and it comes with graphql ruby gem out of the box when using with ...
 yes, full rails. It is not available with rails api.  To start it, just start your rails app!
 ```ruby
@@ -191,11 +212,11 @@ Types::MutationType = GraphQL::ObjectType.define do
     argument :kind, !types.String
 
     resolve ->(obj, args, ctx) {
-      post = Pet.new(args.to_h)
+      pet = Pet.new(args.to_h)
 
-      post.save
+      pet.save
 
-      post
+      pet
     }
   end
 end
