@@ -301,12 +301,9 @@ class OneToManyLoader < GraphQL::Batch::Loader
 
     # this is for a one to many relationship batch processing
     # we want to fulfill every foreign key with an array of matched records
-    # notice that when we fulfill, we need to fulfill based on the original set
-    # of ids sent to us, which was an array of array id: [ [id1], [id2], ... ]
-    # hence the fulfill being called with "[id]" as the key
     ids.each do |id|
       matches = all_records.select{ |r| id == r.send(@foreign_key) }
-      fulfill([id], matches)
+      fulfill(id, matches)
     end
   end
 end
@@ -328,14 +325,14 @@ field :owner, -> { Types::OwnerType } do
 end
 field :activities, -> { types[Types::ActivityType] }  do
   resolve -> (obj, args, ctx) {
-    OneToManyLoader.for(Activity, :pet_id).load([obj.id])
+    OneToManyLoader.for(Activity, :pet_id).load(obj.id)
   }
 end
 
 # ./graphql/owner_type.rb
 field :pets, -> { types[Types::PetType] }  do
   resolve -> (obj, args, ctx) {
-    OneToManyLoader.for(Pet, :owner_id).load([obj.id])
+    OneToManyLoader.for(Pet, :owner_id).load(obj.id)
   }
 end
 ```
@@ -399,34 +396,36 @@ end
 ```
 That's all!  Let's play around with it now:
 ```ruby
-  pets(last: 4) {
-    pageInfo {
-      startCursor
-      endCursor
-      hasNextPage
-      hasPreviousPage
-    }
-    edges {
-      cursor
-      node {
-        id
-        name
-        owner {
-          lastName
-          firstName
-          bio
-          pets {
-            name
-            kind
-          }
+    {
+      pets(last: 4) {
+        pageInfo {
+          startCursor
+          endCursor
+          hasNextPage
+          hasPreviousPage
         }
-        activities {
-          id
-          decription 
+        edges {
+          cursor
+          node {
+            id
+            name
+            owner {
+              lastName
+              firstName
+              bio
+              pets {
+                name
+                kind
+              }
+            }
+            activities {
+              id
+              description 
+            }
+          }
         }
       }
     }
-  }
 ```
 
 What about paginating one to many relationships like our `activities`?  Wouldn't it be nice to only show the first 2 and then show more if user requests it?
