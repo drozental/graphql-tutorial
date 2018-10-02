@@ -82,7 +82,7 @@ In the console, let's populate our models with some data
 ```ruby
 # Gemfile
 
-gem 'graphql'
+gem 'graphql', '1.7.14'
 ```
 Once the dependency has been added to the Gemfile, let's install the gem and initialize it in our project 
 ```bash
