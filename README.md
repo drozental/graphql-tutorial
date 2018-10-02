@@ -13,6 +13,10 @@ It naturally seems to be a good fit for RoR APIs,
  * Add pagination to the API's
 
 ## Creating our Rails App and defining DB schema
+Versions: 
+* ruby -v 2.4.1
+* graphql -v 1.7.14
+* rails -v 5.1.4
 1. Create a rails app with the below command.  Use your own name instead of APP_NAME
 ```ruby
 rails new APP_NAME
@@ -294,9 +298,6 @@ class OneToManyLoader < GraphQL::Batch::Loader
   end
 
   def perform(ids)
-    puts "pre ids: #{ids}"
-    ids = ids.flatten.uniq
-    puts "post ids: #{ids}"
     all_records = @model.where(@foreign_key => ids).to_a
 
     # this is for a one to many relationship batch processing
@@ -335,6 +336,18 @@ field :pets, -> { types[Types::PetType] }  do
     OneToManyLoader.for(Pet, :owner_id).load(obj.id)
   }
 end
+
+# ./graphql/activity_type.rb
+field :owner, -> { Types::OwnerType } do
+  resolve -> (obj, args, ctx) do
+    RecordLoader.for(Owner).load(obj.owner_id)
+  end
+end
+field :pet, -> { Types::PetType } do
+  resolve -> (obj, args, ctx) do
+    RecordLoader.for(Pet).load(obj.pet_id)
+  end
+end 
 ```
 5. Let's check how many queries will run with our new batc loaders?  
 ```ruby
@@ -357,7 +370,7 @@ end
   }
 }
 ```
-We are not down to four database queries, which is a great improvement. 
+We are now down to four database queries, which is a great improvement. 
 
 ## Add pagination to the API's
 1. What about pagination?  As data sets grow, will not having pagination have a negative impact on performance?
