@@ -13,6 +13,8 @@ It naturally seems to be a good fit for RoR APIs,
  * Add pagination to the API's
 
 ## Creating our Rails App and defining DB schema
+Note: There is a new version of the graphql.  Version 1.8 has a slightly different  syntax and folder structure.
+ 
 Versions: 
 * ruby -v 2.4.1
 * graphql -v 1.7.14
@@ -490,7 +492,11 @@ pets(last: 4) {
 ```
 
 ## Further considerations
-What about these? Not ruby, but great for rapid development? Pros/Cons?
+Resources: 
+* http://graphql-ruby.org/guides
+* https://graphql.org/learn/
+
+Noteworthy: 
   * http://www.graph.cool/
   * https://www.prismagraphql.com/
   * https://github.com/postgraphql/postgraphql
