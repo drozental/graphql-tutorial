@@ -9,7 +9,7 @@ It naturally seems to be a good fit for RoR APIs,
  * Create a Rails App
  * Define our simple DB schema
  * Define our simple GraphQL schema, types, queries and mutations
- * Optimise our API's to avoid N+1 queries
+ * Optimize our API's to avoid N+1 queries
  * Add pagination to the API's
 
 ## Creating our Rails App and defining DB schema
@@ -23,7 +23,7 @@ Versions:
 ```ruby
 rails new APP_NAME
 ```
-2. Lets define our tables with `rails g model` commands
+2. Let's define our tables with `rails g model` commands
 ```
 rails generate model Pet name:text kind:text owner_id:integer
 rails generate model Owner first_name:text last_name:text bio:text
@@ -144,7 +144,7 @@ Types::ActivityType = GraphQL::ObjectType.define do
   field :pet, Types::PetType, 'The pet that the activity was performed for'
 end
 ```
-3. Let's deinfe couple of queries
+3. Let's define couple of queries
 ```ruby
 # ./graphql/type/query_type.rb
 field :pet, Types::PetType do
@@ -351,7 +351,7 @@ field :pet, -> { Types::PetType } do
   end
 end 
 ```
-5. Let's check how many queries will run with our new batc loaders?  
+5. Let's check how many queries will run with our new batch loaders?  
 ```ruby
 {
   pets {
@@ -379,7 +379,7 @@ We are now down to four database queries, which is a great improvement.
 
 Here is the spec: https://facebook.github.io/relay/graphql/connections.htm
 
-The spec calls for last, first and after.  When providing `last` and `first`, that is the number of records to take from either the begining or the end of the result set.  `After` specifies the offset.
+The spec calls for last, first and after.  When providing `last` and `first`, that is the number of records to take from either the beginning or the end of the result set.  `After` specifies the offset.
 
 The default schema for pagination looks something like below.  `pageInfo` provides some info about navigation.
 `edges` provides the data in the `node` elements.  That is where we put our usual query. 
