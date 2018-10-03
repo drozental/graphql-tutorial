@@ -1,3 +1,5 @@
+Note: a copy of a completed tutorial is available on the branch called "complete"
+
 # Let's build our first GraphQL API in RoR
 GraphQL is taking the world by storm... well, maybe.  The adoption of GraphQL seems
  to be increasing and that means we should be aware of it and understand it. 
@@ -314,7 +316,13 @@ end
 3. Now we need to update our schema to use graphql-batch
 ```ruby
 # ./graphql/APP_NAME_schema.rb
-use GraphQL::Batch
+GraphqlTutorialSchema = GraphQL::Schema.define do
+  mutation(Types::MutationType)
+  query(Types::QueryType)
+
+  use GraphQL::Batch # add this line
+
+end
 ```
 4. Let's now update our type definitions to resolve model relationships
 with the new resolve definitions
